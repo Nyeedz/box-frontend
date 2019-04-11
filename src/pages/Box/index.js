@@ -11,33 +11,8 @@ import socket from "socket.io-client";
 const io = socket("https://boxnode-backend.herokuapp.com");
 
 export default function Box(props) {
-  const [box, dataSet] = useState("");
-  const [inRoom] = useState(false);
-
-  useEffect(() => {
-    if (inRoom) {
-      console.log("entrou na sala");
-      io.emit("connectRoom", box._id);
-    }
-    let didCancel = false;
-
-    async function fetchData() {
-      const response = await api.get(`boxes/${props.match.params.id}`);
-
-      if (!didCancel) {
-        dataSet(response.data);
-      }
-    }
-
-    fetchData();
-    return () => {
-      didCancel = true;
-      if (inRoom) {
-        console.log("saindo da sala");
-        io.emit("disconnect", { room: "teste-room" });
-      }
-    };
-  }, [props.match.params.id, box]);
+  const box = useFetchDataApi(props.match.params.id);
+  useSocket(box);
 
   function handleUpload(files) {
     files.forEach(file => {
@@ -86,4 +61,40 @@ export default function Box(props) {
       </ul>
     </div>
   );
+}
+
+function useSocket(box) {
+  const [inRoom] = useState(false);
+  useEffect(() => {
+    if (inRoom) {
+      console.log("entrou na sala");
+      io.emit("connectRoom", box._id);
+    }
+    return () => {
+      if (inRoom) {
+        io.emit("disconect", { room: "teste-room" });
+      }
+    };
+  });
+}
+
+function useFetchDataApi(props) {
+  const [box, dataSet] = useState("");
+  let didCancel = false;
+
+  async function fetchData() {
+    const response = await api.get(`boxes/${props}`);
+    if (!didCancel) {
+      dataSet(response.data);
+    }
+  }
+
+  useEffect(() => {
+    fetchData();
+    return () => {
+      didCancel = true;
+    };
+  }, [props, box]);
+
+  return box;
 }
